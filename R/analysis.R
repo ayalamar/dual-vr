@@ -118,14 +118,15 @@ plot_single_errors <- function(){
     # print some stats 
     t.test(ppdf$ae, mu = 0, alternative = "less")
     
-
-    
   }
-  
 
 }
 
 plot_dual_errors <- function(){
+  
+  library(dplyr)
+  library(ggplot2)
+  library(ggbeeswarm)
   
   dual30 <- read.csv('data/all_reaches_dual.csv', header = TRUE)
   dual60 <- read.csv('data/all_reaches_dual_60.csv', header = TRUE)
@@ -194,6 +195,7 @@ plot_dual_errors <- function(){
       }
       
     }
+    
   }
   
   # print some stats
@@ -226,9 +228,43 @@ plot_dual_errors <- function(){
         summarise(pptheta = mean(theta, na.rm = TRUE), groupname = group, rotation = rot) %>%
         spread(clampblock, pptheta) %>%
         mutate(ae = include - baseline, implicit_ae = exclude - baseline) 
+
+      groupdf <- ppdf %>%
+        group_by(groupname) %>%
+        mutate(groupae = mean(ae, na.rm = TRUE),
+               groupsd = sd(ae, na.rm = TRUE),
+               groupsem = groupsd/sqrt(length(unique(ppid))))
+      
+      aebars <- ggplot(data = groupdf, aes(x = unique(groupname), y = unique(groupae))) +
+        geom_bar(stat = "identity", position = "dodge") +
+        geom_errorbar(data = groupdf, mapping = aes(x = unique(groupname), y = unique(groupae), 
+                                                    ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
+                      width = 0.2, size = 0.5, color = "black",
+                      position = position_dodge(width = 0.9)) +
+        geom_beeswarm(data = ppdf, aes(x = unique(groupname), y = ae),
+                      alpha = 1/7,
+                      dodge.width = .9, cex = 3,
+                      stroke = 0.3) +
+        ylab("theta") +
+        ggtitle(paste(group, rot)) +
+        coord_fixed(ratio = 1/13) +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+              panel.background = element_blank(), axis.line = element_line(colour = "black"),
+              legend.title = element_blank(), legend.position = "none") +
+        scale_y_continuous(breaks = seq(-45, +45, 15), limits = c(-45, 45))
+      
+      print(aebars)
+      
+      
+      # print some stats 
+      t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+      t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
+      
       
     }
+    
   }
+  
 }
 
 
