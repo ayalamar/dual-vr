@@ -3,19 +3,18 @@
 # sphere: -30 or -60 / CW rotation
 # data was normalized by flipping CW
 
-library(dplyr)
-library(ggplot2)
-library(ggbeeswarm)
-library(ez)
-
 plot_single_errors <- function(){
+  
+  library(dplyr)
+  library(ggplot2)
+  library(ggbeeswarm)
   
   single <- read.csv('data/all_reaches_single.csv', header = TRUE)
   
   groupnames <- unique(single$experiment)
   
+  # analyze and visualize learning
   singles <- NA
-  
   for (groupname in groupnames) {
     
     ppdf <- single %>% # get individual means so you can display individual learning curves
@@ -63,7 +62,8 @@ plot_single_errors <- function(){
 
   } 
   
-  # print some stats
+  # print some stats 
+  library(ez)
   mod <- ezANOVA(data = singles,
                   dv = pptheta, 
                   wid = ppid,
@@ -73,6 +73,53 @@ plot_single_errors <- function(){
                   return_aov = TRUE)
   
   print(mod)
+  
+  # analyze and visualize reach AEs
+  swarms <- NA
+  for (groupname in groupnames) {
+    
+    ppdf <- single %>% # get individual means so you can display individual learning curves
+      filter(experiment == groupname) %>%
+      group_by(ppid) %>%
+      filter(block_num %in% c(7, 17)) %>% # blocks with baseline clamp and clamp following rotated training
+      filter(trial_num %in% c(66:68, 319:321)) %>%
+      mutate(clampblock = ifelse(trial_num %in% c(66:68), 1, 2)) %>%
+      ungroup() %>%
+      group_by(ppid, clampblock) %>% # get block means per ppid
+      summarise(pptheta = mean(theta, na.rm = TRUE), group = groupname) %>%
+      spread(clampblock, pptheta) %>%
+      mutate(ae = `2` - `1`) 
+    
+    groupdf <- ppdf %>%
+      group_by(group) %>%
+      mutate(groupae = mean(ae, na.rm = TRUE),
+             groupsd = sd(ae, na.rm = TRUE),
+             groupsem = groupsd/sqrt(length(unique(ppid))))
+    
+    aebars <- ggplot(data = groupdf, aes(x = unique(group), y = unique(groupae))) +
+      geom_bar(stat = "identity", position = "dodge") +
+      geom_errorbar(data = groupdf, mapping = aes(x = unique(group), y = unique(groupae), 
+                                               ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
+                    width = 0.2, size = 0.5, color = "black",
+                    position = position_dodge(width = 0.9)) +
+      geom_beeswarm(data = ppdf, aes(x = unique(group), y = ae),
+                    alpha = 1/7,
+                    dodge.width = .9, cex = 3,
+                    stroke = 0.3) +
+      ylab("theta") +
+      ggtitle(groupname) +
+      coord_fixed(ratio = 1/13) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+            panel.background = element_blank(), axis.line = element_line(colour = "black"),
+            legend.title = element_blank(), legend.position = "none") +
+      scale_y_continuous(breaks = seq(-45, +45, 15), limits = c(-45, 45))
+    
+    print(aebars)
+    
+
+    
+  }
+  
 
 }
 
@@ -159,5 +206,6 @@ plot_dual_errors <- function(){
   print(mod)
   
 }
+
 
 ## next steps -- work on AE, then PI maybe
