@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1588260999585.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2896121186",
+    "id" : "B14DE02D",
+    "lastKnownWriteTime" : 1588306422,
+    "last_content_update" : 1588306422468,
+    "path" : "~/Documents/dual-vr/R/analysis.R",
+    "project_path" : "R/analysis.R",
+    "properties" : {
+        "cursorPosition" : "159,2",
+        "scrollLine" : "144",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
