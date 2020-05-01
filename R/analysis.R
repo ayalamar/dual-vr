@@ -75,10 +75,9 @@ plot_single_errors <- function(){
   print(mod)
   
   # analyze and visualize reach AEs
-  swarms <- NA
   for (groupname in groupnames) {
     
-    ppdf <- single %>% # get individual means so you can display individual learning curves
+    ppdf <- single %>% 
       filter(experiment == groupname) %>%
       group_by(ppid) %>%
       filter(block_num %in% c(7, 17)) %>% # blocks with baseline clamp and clamp following rotated training
@@ -116,6 +115,9 @@ plot_single_errors <- function(){
     
     print(aebars)
     
+    # print some stats 
+    t.test(ppdf$ae, mu = 0, alternative = "less")
+    
 
     
   }
@@ -140,8 +142,8 @@ plot_dual_errors <- function(){
   
   rots <- unique(dual$obj_shape)
   
+  # analyze and visualize learning
   duals <- NA
-
   for (group in dualgroups){
     
     for (rot in rots){
@@ -205,7 +207,31 @@ plot_dual_errors <- function(){
   
   print(mod)
   
+  # analyze and visual dual AEs
+  for (group in dualgroups){
+    
+    for (rot in rots){
+      
+      ppdf <- dual %>% 
+        filter(dualgroup == group) %>%
+        filter(obj_shape == rot) %>%
+        group_by(ppid) %>%
+        filter(block_num %in% c(5, 11, 14)) %>% # clamp blocks: baseline, include-strategy, exclude-strategy
+        mutate(trialn = 1:n()) %>% # rewrite new trial numbers because rotations are interleaved
+        filter(trialn %in% c(4:6, 7:9, 13:15)) %>%
+        mutate(clampblock = ifelse(trialn %in% c(4:6), 'baseline',
+                                   ifelse(trialn %in% c(7:9), 'include', 'exclude'))) %>%
+        ungroup() %>%
+        group_by(ppid, clampblock) %>% # get block means per ppid
+        summarise(pptheta = mean(theta, na.rm = TRUE), groupname = group, rotation = rot) %>%
+        spread(clampblock, pptheta) %>%
+        mutate(ae = include - baseline, implicit_ae = exclude - baseline) 
+      
+    }
+  }
 }
 
 
-## next steps -- work on AE, then PI maybe
+
+
+## next steps -- PI maybe
