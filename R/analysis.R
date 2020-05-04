@@ -13,6 +13,14 @@ plot_single_errors <- function(){
   
   groupnames <- unique(single$experiment)
   
+  cube <- single %>% # un-normalize errors for now so we can make directional
+    filter(experiment == groupnames[1]) %>% 
+    mutate(theta = ifelse(block_num %in% c(16, 7, 17), theta*-1, theta))
+  
+  single <- single %>% 
+    filter(experiment == groupnames[2]) %>%
+    bind_rows(cube)
+  
   # analyze and visualize learning
   singles <- NA
   for (groupname in groupnames) {
@@ -95,7 +103,7 @@ plot_single_errors <- function(){
              groupsd = sd(ae, na.rm = TRUE),
              groupsem = groupsd/sqrt(length(unique(ppid))))
     
-    aebars <- ggplot(data = groupdf, aes(x = unique(group), y = unique(groupae))) +
+    aebars_explicit <- ggplot(data = groupdf, aes(x = unique(group), y = unique(groupae))) +
       geom_bar(stat = "identity", position = "dodge") +
       geom_errorbar(data = groupdf, mapping = aes(x = unique(group), y = unique(groupae), 
                                                ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
@@ -113,10 +121,10 @@ plot_single_errors <- function(){
             legend.title = element_blank(), legend.position = "none") +
       scale_y_continuous(breaks = seq(-45, +45, 15), limits = c(-45, 45))
     
-    print(aebars)
+    print(aebars_explicit)
     
     # print some stats 
-    t.test(ppdf$ae, mu = 0, alternative = "less")
+    #t.test(ppdf$ae, mu = 0, alternative = "less")
     
   }
 
@@ -125,6 +133,7 @@ plot_single_errors <- function(){
 plot_dual_errors <- function(){
   
   library(dplyr)
+  library(tidyr)
   library(ggplot2)
   library(ggbeeswarm)
   
@@ -184,7 +193,7 @@ plot_dual_errors <- function(){
               panel.background = element_blank(), axis.line = element_line(colour = "black"),
               legend.title = element_blank(), legend.position = "none",
               axis.text.x = element_blank()) +
-        ggtitle(paste('dual', rot, sep = ""))
+        ggtitle(paste('dual', rot))
       
       print(groupplot)
       
@@ -233,9 +242,12 @@ plot_dual_errors <- function(){
         group_by(groupname) %>%
         mutate(groupae = mean(ae, na.rm = TRUE),
                groupsd = sd(ae, na.rm = TRUE),
-               groupsem = groupsd/sqrt(length(unique(ppid))))
+               groupsem = groupsd/sqrt(length(unique(ppid))),
+               groupimpae = mean(implicit_ae, na.rm = TRUE),
+               groupimpsd = sd(implicit_ae, na.rm = TRUE),
+               groupimpsem = groupimpsd/sqrt(length(unique(ppid)))) 
       
-      aebars <- ggplot(data = groupdf, aes(x = unique(groupname), y = unique(groupae))) +
+      aebars_explicit <- ggplot(data = groupdf, aes(x = unique(groupname), y = unique(groupae))) +
         geom_bar(stat = "identity", position = "dodge") +
         geom_errorbar(data = groupdf, mapping = aes(x = unique(groupname), y = unique(groupae), 
                                                     ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
@@ -246,20 +258,38 @@ plot_dual_errors <- function(){
                       dodge.width = .9, cex = 3,
                       stroke = 0.3) +
         ylab("theta") +
-        ggtitle(paste(group, rot)) +
+        ggtitle(paste(group, rot, ' - with strategy')) +
         coord_fixed(ratio = 1/13) +
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               panel.background = element_blank(), axis.line = element_line(colour = "black"),
               legend.title = element_blank(), legend.position = "none") +
-        scale_y_continuous(breaks = seq(-45, +45, 15), limits = c(-45, 45))
+        scale_y_continuous(breaks = seq(-30, +30, 10), limits = c(-30, 30)) 
       
-      print(aebars)
+      print(aebars_explicit)
       
+      aebars_implicit <- ggplot(data = groupdf, aes(x = unique(groupname), y = unique(groupimpae))) +
+        geom_bar(stat = "identity", position = "dodge") +
+        geom_errorbar(data = groupdf, mapping = aes(x = unique(groupname), y = unique(groupimpae), 
+                                                    ymin = unique(groupimpae) - unique(groupimpsem), ymax =unique(groupimpae) + unique(groupimpsem)),
+                      width = 0.2, size = 0.5, color = "black",
+                      position = position_dodge(width = 0.9)) +
+        geom_beeswarm(data = ppdf, aes(x = unique(groupname), y = implicit_ae),
+                      alpha = 1/7,
+                      dodge.width = .9, cex = 3,
+                      stroke = 0.3) +
+        ylab("theta") +
+        ggtitle(paste(group, rot, ' - without strategy')) +
+        coord_fixed(ratio = 1/13) +
+        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+              panel.background = element_blank(), axis.line = element_line(colour = "black"),
+              legend.title = element_blank(), legend.position = "none") +
+        scale_y_continuous(breaks = seq(-30, +30, 10), limits = c(-30, 30)) 
+      
+      print(aebars_implicit)
       
       # print some stats 
-      t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
-      t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
-      
+      #t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+      #t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
       
     }
     
