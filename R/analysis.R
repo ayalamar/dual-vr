@@ -8,6 +8,8 @@ plot_single_errors <- function(){
   library(dplyr)
   library(ggplot2)
   library(ggbeeswarm)
+  library(tidyr)
+  library(reprex)
   
   single <- read.csv('data/all_reaches_single.csv', header = TRUE)
   
@@ -67,18 +69,18 @@ plot_single_errors <- function(){
     } else {
       singles <- rbind(singles, ppdf)
     }
-
+    
   } 
   
   # print some stats 
   library(ez)
   mod <- ezANOVA(data = singles,
-                  dv = pptheta, 
-                  wid = ppid,
-                  within = firstlast, 
-                  between = .(rot), 
-                  detailed = TRUE,
-                  return_aov = TRUE)
+                 dv = pptheta, 
+                 wid = ppid,
+                 within = firstlast, 
+                 between = .(rot), 
+                 detailed = TRUE,
+                 return_aov = TRUE)
   
   print(mod)
   
@@ -106,7 +108,7 @@ plot_single_errors <- function(){
     aebars_explicit <- ggplot(data = groupdf, aes(x = unique(group), y = unique(groupae))) +
       geom_bar(stat = "identity", position = "dodge") +
       geom_errorbar(data = groupdf, mapping = aes(x = unique(group), y = unique(groupae), 
-                                               ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
+                                                  ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
                     width = 0.2, size = 0.5, color = "black",
                     position = position_dodge(width = 0.9)) +
       geom_beeswarm(data = ppdf, aes(x = unique(group), y = ae),
@@ -124,10 +126,10 @@ plot_single_errors <- function(){
     print(aebars_explicit)
     
     # print some stats 
-    #t.test(ppdf$ae, mu = 0, alternative = "less")
+    ae_stats(groupdf)
     
   }
-
+  
 }
 
 plot_dual_errors <- function(){
@@ -179,6 +181,12 @@ plot_dual_errors <- function(){
                   groupsem = groupsd/sqrt(length(unique(ppid))), 
                   group = unique(group), rot = unique(rot))
       
+      if(group == 'dual30'){
+        limits_y = c(-30, 30)
+      } else { #dual60 group
+        limits_y = c(-60, 60)
+      }
+      
       groupplot <- ggplot(data = groupdf, aes(x = firstlast, y = grouptheta)) +
         geom_point() +
         geom_line(data = groupdf, aes(x = firstlast, y = grouptheta)) +
@@ -187,13 +195,13 @@ plot_dual_errors <- function(){
                     alpha = 0.4) +
         geom_line(data = ppdf, aes(x = firstlast, y = pptheta, color = as.factor(ppid)), alpha = 0.1) +
         coord_fixed(ratio = 1/7) +
-        ylim(-45,45) +
         xlim(0,8) +
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               panel.background = element_blank(), axis.line = element_line(colour = "black"),
               legend.title = element_blank(), legend.position = "none",
               axis.text.x = element_blank()) +
-        ggtitle(paste('dual', rot))
+        ggtitle(paste('dual', rot)) +
+        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y)
       
       print(groupplot)
       
@@ -237,7 +245,7 @@ plot_dual_errors <- function(){
         summarise(pptheta = mean(theta, na.rm = TRUE), groupname = group, rotation = rot) %>%
         spread(clampblock, pptheta) %>%
         mutate(ae = include - baseline, implicit_ae = exclude - baseline) 
-
+      
       groupdf <- ppdf %>%
         group_by(groupname) %>%
         mutate(groupae = mean(ae, na.rm = TRUE),
@@ -263,7 +271,7 @@ plot_dual_errors <- function(){
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               panel.background = element_blank(), axis.line = element_line(colour = "black"),
               legend.title = element_blank(), legend.position = "none") +
-        scale_y_continuous(breaks = seq(-30, +30, 10), limits = c(-30, 30)) 
+        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y) 
       
       print(aebars_explicit)
       
@@ -283,13 +291,46 @@ plot_dual_errors <- function(){
         theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
               panel.background = element_blank(), axis.line = element_line(colour = "black"),
               legend.title = element_blank(), legend.position = "none") +
-        scale_y_continuous(breaks = seq(-30, +30, 10), limits = c(-30, 30)) 
+        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y) 
       
       print(aebars_implicit)
       
-      # print some stats 
-      #t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+      # stats - directional comparison to 0 depending on rotation
+      print(paste(groupname, rot))
+      
+      ae_stats(groupdf)
+      
+      
+      
+    }
+    
+  }
+  
+}
+
+ae_stats <- function(groupdf){
+  
+  if(ncol(ppdf) == 5){ # it's a single group
+    
+    print(unique(ppdf$group))
+    
+    if(unique(ppdf$group) == 'moveObject_R_Sphere_1'){
+      t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+    } else { # cube
+      t.test(ppdf$ae, mu = 0, alternative = "greater") # reach ae only
+    }
+    
+  } else { # it's a dual group
+    
+    print(unique(groupdf$groupname))
+    print(unique(groupdf$rotation))
+    
+    if(unique(groupdf$rotation) == 'sphere'){
+      t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
       #t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
+    } else { # cube
+      t.test(ppdf$ae, mu = 0, alternative = "greater") # reach ae only
+      #t.test(ppdf$implicit_ae, mu = 0, alternative = "greater") # implicit ae
       
     }
     
@@ -299,5 +340,4 @@ plot_dual_errors <- function(){
 
 
 
-
-## next steps -- PI maybe
+## next steps -- PI maybe, outlier screening  ?
