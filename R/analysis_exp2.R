@@ -1,4 +1,4 @@
-# analyze dual VR data
+# analyze VR data - exp 2 (duals)
 # cube: 30 or 60 / CCW rotation (polar co-ordinates)
 # sphere: -30 or -60 / CW rotation
 # data was normalized by flipping CW
@@ -10,6 +10,7 @@ plot_single_errors <- function(){
   library(ggbeeswarm)
   library(tidyr)
   library(reprex)
+  library(lsr)
   
   single <- read.csv('data/all_reaches_single.csv', header = TRUE)
   
@@ -74,15 +75,30 @@ plot_single_errors <- function(){
   
   # print some stats 
   library(ez)
-  mod <- ezANOVA(data = singles,
-                 dv = pptheta, 
-                 wid = ppid,
-                 within = firstlast, 
-                 between = .(rot), 
-                 detailed = TRUE,
-                 return_aov = TRUE)
+  # mod <- ezANOVA(data = singles,
+  #                dv = pptheta, 
+  #                wid = ppid,
+  #                within = firstlast, 
+  #                between = .(rot), 
+  #                detailed = TRUE,
+  #                return_aov = TRUE)
+  # print(mod)
+
+  # analyze sphere only - first vs. last block
+  singles_sphere <- singles %>%
+    filter(group == "moveObject_R_Sphere_1") %>%
+    filter(firstlast %in% c(1,7))
   
-  print(mod)
+  t.test(pptheta ~ firstlast, data = singles_sphere, paired = TRUE, alternative = "greater")
+  cohensD(pptheta ~ firstlast, data = singles_sphere)
+  
+  # analyze cube only - first vs. last block
+  singles_cube <- singles %>%
+    filter(group == "moveObject_R_Cube_1") %>%
+    filter(firstlast %in% c(1,7))
+  
+  t.test(pptheta ~ firstlast, data = singles_cube, paired = TRUE, alternative = "less")
+  cohensD(pptheta ~ firstlast, data = singles_cube)
   
   # analyze and visualize reach AEs
   for (groupname in groupnames) {
@@ -138,6 +154,7 @@ plot_dual_errors <- function(){
   library(tidyr)
   library(ggplot2)
   library(ggbeeswarm)
+  library(ez)
   
   dual30 <- read.csv('data/all_reaches_dual.csv', header = TRUE)
   dual60 <- read.csv('data/all_reaches_dual_60.csv', header = TRUE)
@@ -216,15 +233,33 @@ plot_dual_errors <- function(){
   }
   
   # print some stats
-  mod <- ezANOVA(data = duals,
+  dual30 <- duals %>%
+    filter(rot %in% c(-30,30)) %>%
+    filter(firstlast %in% c(1,7))
+  
+  mod30 <- ezANOVA(data = dual30,
                  dv = pptheta, 
                  wid = ppid,
                  within = .(firstlast, rot),
-                 between = group,
+                 #between = group,
                  detailed = TRUE,
                  return_aov = TRUE)
   
-  print(mod)
+  print(mod30)
+  
+  dual60 <- duals %>%
+    filter(rot %in% c(-60,60)) %>%
+    filter(firstlast %in% c(1,7))
+  
+  mod60 <- ezANOVA(data = dual60,
+                   dv = pptheta, 
+                   wid = ppid,
+                   within = .(firstlast, rot),
+                   #between = group,
+                   detailed = TRUE,
+                   return_aov = TRUE)
+  
+  print(mod60)
   
   # analyze and visual dual AEs
   for (group in dualgroups){
@@ -316,8 +351,10 @@ ae_stats <- function(groupdf){
     
     if(unique(ppdf$group) == 'moveObject_R_Sphere_1'){
       t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+      cohensD(ppdf$ae, mu=0)
     } else { # cube
       t.test(ppdf$ae, mu = 0, alternative = "greater") # reach ae only
+      cohensD(ppdf$ae, mu=0)
     }
     
   } else { # it's a dual group
@@ -326,18 +363,89 @@ ae_stats <- function(groupdf){
     print(unique(groupdf$rotation))
     
     if(unique(groupdf$rotation) == 'sphere'){
-      t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
-      #t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
+      #y <- t.test(ppdf$ae, mu = 0, alternative = "less") # reach ae only
+      y <- t.test(ppdf$implicit_ae, mu = 0, alternative = "less") # implicit ae
+      print(y)
+      cohensD(ppdf$ae, mu=0)
     } else { # cube
-      t.test(ppdf$ae, mu = 0, alternative = "greater") # reach ae only
-      #t.test(ppdf$implicit_ae, mu = 0, alternative = "greater") # implicit ae
-      
+      #y <- t.test(ppdf$ae, mu = 0, alternative = "greater") # reach ae only
+      y <- t.test(ppdf$implicit_ae, mu = 0, alternative = "greater") # implicit ae
+      print(y)
+      cohensD(ppdf$ae, mu = 0)
     }
     
   }
   
 }
 
-
-
-## next steps -- PI maybe, outlier screening  ?
+analyzed_dual_collapsed <- function(){ 
+  
+  library(dplyr)
+  library(tidyr)
+  library(ggplot2)
+  library(ggbeeswarm)
+  library(ez)
+  
+  dual30 <- read.csv('data/all_reaches_dual.csv', header = TRUE)
+  dual60 <- read.csv('data/all_reaches_dual_60.csv', header = TRUE)
+  
+  dual30 <- dual30 %>%
+    mutate(dualgroup = 'dual30')
+  
+  dual60 <- dual60 %>%
+    mutate(dualgroup = 'dual60')
+  
+  dual <- rbind(dual30, dual60)
+  
+  dualgroups <- unique(dual$dualgroup)
+  
+  # make a column that has normalized errors
+  dual_n <- dual %>% 
+    mutate(theta_n = ifelse(dual_rotation %in% c(30, 60), theta*-1, theta*1))
+  
+  duals_n <- NA # collapsed across rotations
+  
+  for (group in dualgroups){
+    
+    ppdf <- dual_n %>% 
+      filter(dualgroup == group) %>%
+      group_by(ppid) %>%
+      filter(block_num %in% c(7,10)) %>% # rotated training blocks
+      mutate(trialn = 1:n()) %>% # rewrite new trial numbers because rotations are interleaved
+      filter(trialn %in% c(1:3,178:180)) %>%
+      mutate(firstlast = ifelse(trialn %in% c(1:3), 1, 7)) %>% # last block is labeled "7" 
+      ungroup() %>%
+      group_by(ppid, firstlast) %>% # get block means per ppid
+      summarise(pptheta_n = mean(theta_n, na.rm = TRUE))
+    
+    groupdf <- ppdf %>% # get block means per group, for plots
+      group_by(firstlast) %>%
+      summarise(grouptheta = mean(pptheta_n, na.rm = TRUE),
+                groupsd = sd(pptheta_n, na.rm = TRUE),
+                groupsem = groupsd/sqrt(length(unique(ppid))))
+    
+    
+    if (is.na(duals_n)){
+      duals_n <- ppdf
+    } else {
+      duals_n <- rbind(duals_n, ppdf)
+    }
+    
+    
+    # compare first and last block for each dual group - collapsed rotations
+    t.test(duals_n$pptheta_n[which(duals_n$firstlast==1)],
+           duals_n$pptheta_n[which(duals_n$firstlast==7)],
+           alternative = "less",
+           paired = TRUE)
+    
+  }
+  
+  # compare first and last block for each dual group - collapsed rotations
+  t.test(duals_n$pptheta_n[which(duals_n$firstlast==1)],
+         duals_n$pptheta_n[which(duals_n$firstlast==7)],
+         alternative = "less",
+         paired = TRUE)
+  
+  cohensD(duals_n$pptheta_n[which(duals_n$firstlast==1)], duals_n$pptheta_n[which(duals_n$firstlast==7)])
+  
+}
