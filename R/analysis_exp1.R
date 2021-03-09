@@ -13,7 +13,6 @@ library(tidyr)
 library(lsr)
 library(OneR)
 
-
 # LOAD DATA AND MAKE BINS FOR PLOTTING
 df <- read.csv('data/all_reaches_single.csv', header = TRUE)
 df <- tbl_df(df) 
@@ -42,9 +41,9 @@ df <- df %>%
                      aes(x = as.numeric(allbinno),
                          y = as.numeric(Mean_th),
                          color = factor(type),
-                         
-                         shape = factor(hand))) +
+                         shape = factor(obj_shape))) +
     geom_point(group = 1) +
+    scale_shape_manual(values=c(0, 1)) +
     scale_size_manual(values=c(1,2)) +
     geom_errorbar(aes(ymin=Mean_th-SEM_th, ymax=Mean_th+SEM_th),
                 alpha=0.4) +

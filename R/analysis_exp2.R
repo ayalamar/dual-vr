@@ -28,7 +28,7 @@ plot_single_errors <- function(){
   singles <- NA
   for (groupname in groupnames) {
     
-    ppdf <- single %>% # get individual means so you can display individual learning curves
+    ppdf <- single %>% # get individual means so can display individual learning curves
       filter(experiment == groupname) %>%
       group_by(ppid) %>%
       filter(block_num == 16) %>% # this rotated training block needs to change PER EXPERIMENT
@@ -47,21 +47,41 @@ plot_single_errors <- function(){
                 groupsem = groupsd/sqrt(length(unique(ppid))), 
                 group = groupname, rot = unique(rot))
     
-    groupplot <- ggplot(data = groupdf, aes(x = firstlast, y = grouptheta)) +
+    if (groupname == groupnames[2]){ # make LCs from sphere dashed
+      linetypeset = "dashed" 
+    } else {
+      linetypeset = "solid"
+    }
+    
+    groupplot <- ggplot(data = groupdf,
+                        aes(x = firstlast, y = grouptheta)) +
       geom_point() +
-      geom_line(data = groupdf, aes(x = firstlast, y = grouptheta)) +
+      geom_line(data = groupdf, 
+                aes(x = firstlast, y = grouptheta)) +
       geom_ribbon(data = groupdf,
-                  aes(ymin = grouptheta - groupsem, ymax = grouptheta + groupsem),
+                  aes(ymin = grouptheta - groupsem, 
+                      ymax = grouptheta + groupsem),
                   alpha=0.4) +
-      geom_line(data = ppdf, aes(x = firstlast, y = pptheta, color = as.factor(ppid)), alpha = 0.1) +
+      geom_line(data = ppdf, 
+                aes(x = firstlast, y = pptheta,
+                    color = as.factor(ppid)), 
+                linetype = linetypeset,
+                alpha = 0.3) +
       coord_fixed(ratio = 1/7) +
-      ylim(-45,45) +
+      scale_y_continuous(name="Hand angle (Degrees)",
+                         limits=c(-60, 60),
+                         breaks=seq(-60,60,10)) +
       xlim(0,8) +
-      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-            panel.background = element_blank(), axis.line = element_line(colour = "black"),
-            legend.title = element_blank(), legend.position = "none",
+      theme(panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            panel.background = element_blank(),
+            axis.line = element_line(colour = "black"),
+            legend.title = element_blank(), 
+            legend.position = "none",
             axis.text.x = element_blank()) +
-      ggtitle(groupname)
+      ggtitle(groupname) +
+      geom_hline(yintercept = -30,  linetype = "dashed", color = "red")  +
+      geom_hline(yintercept = 30,  linetype = "dashed", color = "red")
     
     print(groupplot)
     
@@ -121,9 +141,11 @@ plot_single_errors <- function(){
              groupsd = sd(ae, na.rm = TRUE),
              groupsem = groupsd/sqrt(length(unique(ppid))))
     
-    aebars_explicit <- ggplot(data = groupdf, aes(x = unique(group), y = unique(groupae))) +
+    aebars_explicit <- ggplot(data = groupdf,
+                              aes(x = unique(group), y = unique(groupae))) +
       geom_bar(stat = "identity", position = "dodge") +
-      geom_errorbar(data = groupdf, mapping = aes(x = unique(group), y = unique(groupae), 
+      geom_errorbar(data = groupdf, 
+                    aes(x = unique(group), y = unique(groupae), 
                                                   ymin = unique(groupae) - unique(groupsem), ymax =unique(groupae) + unique(groupsem)),
                     width = 0.2, size = 0.5, color = "black",
                     position = position_dodge(width = 0.9)) +
@@ -137,7 +159,9 @@ plot_single_errors <- function(){
       theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
             panel.background = element_blank(), axis.line = element_line(colour = "black"),
             legend.title = element_blank(), legend.position = "none") +
-      scale_y_continuous(breaks = seq(-45, +45, 15), limits = c(-45, 45))
+      scale_y_continuous(name="Hand angle (Degrees)",
+                         limits=c(-60, 60),
+                         breaks=seq(-60,60,10))
     
     print(aebars_explicit)
     
@@ -204,21 +228,44 @@ plot_dual_errors <- function(){
         limits_y = c(-60, 60)
       }
       
-      groupplot <- ggplot(data = groupdf, aes(x = firstlast, y = grouptheta)) +
+      if(rot == "sphere") {
+        linetypeset = "dashed"
+      } else {
+        linetypeset = "solid"
+      }
+      
+      groupplot <- ggplot(data = groupdf,
+                          aes(x = firstlast, y = grouptheta)) +
         geom_point() +
-        geom_line(data = groupdf, aes(x = firstlast, y = grouptheta)) +
+        geom_line(data = groupdf,
+                  aes(x = firstlast, y = grouptheta)) +
         geom_ribbon(data = groupdf,
-                    aes(ymin = grouptheta - groupsem, ymax = grouptheta + groupsem),
+                    aes(ymin = grouptheta - groupsem,
+                        ymax = grouptheta + groupsem),
                     alpha = 0.4) +
-        geom_line(data = ppdf, aes(x = firstlast, y = pptheta, color = as.factor(ppid)), alpha = 0.1) +
+        geom_line(data = ppdf, 
+                  aes(x = firstlast, y = pptheta, 
+                      color = as.factor(ppid)),
+                  linetype = linetypeset, alpha = 0.3) +
         coord_fixed(ratio = 1/7) +
         xlim(0,8) +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-              panel.background = element_blank(), axis.line = element_line(colour = "black"),
-              legend.title = element_blank(), legend.position = "none",
+        theme(panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.background = element_blank(),
+              axis.line = element_line(colour = "black"),
+              legend.title = element_blank(), 
+              legend.position = "none",
               axis.text.x = element_blank()) +
         ggtitle(paste('dual', rot)) +
-        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y)
+        scale_y_continuous(name="Hand angle (Degrees)",
+                           limits=c(-60, 60),
+                           breaks=seq(-60,60,10)) +
+        geom_hline(yintercept = limits_y[1],
+                   linetype = "dashed",
+                   color = "red")  +
+        geom_hline(yintercept = limits_y[2],
+                   linetype = "dashed",
+                   color = "red")
       
       print(groupplot)
       
@@ -303,10 +350,15 @@ plot_dual_errors <- function(){
         ylab("theta") +
         ggtitle(paste(group, rot, ' - with strategy')) +
         coord_fixed(ratio = 1/13) +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-              panel.background = element_blank(), axis.line = element_line(colour = "black"),
-              legend.title = element_blank(), legend.position = "none") +
-        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y) 
+        theme(panel.grid.major = element_blank(), 
+              panel.grid.minor = element_blank(),
+              panel.background = element_blank(),
+              axis.line = element_line(colour = "black"),
+              legend.title = element_blank(), 
+              legend.position = "none") +
+        scale_y_continuous(name="Hand angle (Degrees)",
+                           limits=c(-60, 60),
+                           breaks=seq(-60,60,10)) 
       
       print(aebars_explicit)
       
@@ -323,11 +375,15 @@ plot_dual_errors <- function(){
         ylab("theta") +
         ggtitle(paste(group, rot, ' - without strategy')) +
         coord_fixed(ratio = 1/13) +
-        theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-              panel.background = element_blank(), axis.line = element_line(colour = "black"),
-              legend.title = element_blank(), legend.position = "none") +
-        scale_y_continuous(breaks = seq(limits_y[1], limits_y[2], 10), limits = limits_y) 
-      
+        theme(panel.grid.major = element_blank(),
+              panel.grid.minor = element_blank(),
+              panel.background = element_blank(),
+              axis.line = element_line(colour = "black"),
+              legend.title = element_blank(),
+              legend.position = "none") +
+        scale_y_continuous(name="Hand angle (Degrees)",
+                           limits=c(-60, 60),
+                           breaks=seq(-60,60,10))
       print(aebars_implicit)
       
       # stats - directional comparison to 0 depending on rotation
@@ -447,5 +503,124 @@ analyzed_dual_collapsed <- function(){
          paired = TRUE)
   
   cohensD(duals_n$pptheta_n[which(duals_n$firstlast==1)], duals_n$pptheta_n[which(duals_n$firstlast==7)])
+  
+}
+
+plot_dual_full_LC <- function(){
+  
+  library(dplyr)
+  library(ggplot2)
+  library(svglite)
+  library(gginnards)
+  library(Hmisc)
+  library(ggbeeswarm)
+  library(tidyr)
+  library(lsr)
+  library(OneR)
+  
+  dual30 <- read.csv('data/all_reaches_dual.csv', header = TRUE)
+  dual60 <- read.csv('data/all_reaches_dual_60.csv', header = TRUE)
+  
+  dual30 <- dual30 %>%
+    mutate(dualgroup = 'dual30')
+  
+  dual60 <- dual60 %>%
+    mutate(dualgroup = 'dual60')
+  
+  dual <- rbind(dual30, dual60)
+  
+  dualgroups <- unique(dual$dualgroup)
+  
+  rots <- unique(dual$obj_shape)
+  
+  dual <- tbl_df(dual) 
+  
+  for (group in dualgroups){
+
+    dfcube <- dual %>%
+      filter(dualgroup == group) %>%
+      filter(block_num > 3) %>% # exclude practice blocks
+      group_by(ppid) %>%
+      filter(obj_shape == "cube") %>%
+      mutate(trialn = 1:n(),
+             allbinno = bin(trialn, # bins for ALL trials, ignore task
+                            nbins = (max(trialn))/3,
+                            labels = c(1:(max(trialn)/3)))) %>%
+      group_by(block_num) %>%
+      mutate(binno = bin(trial_num_in_block, # bins per task 
+                         nbins = (max(trial_num_in_block))/3,
+                         labels = c(1:(max(trial_num_in_block)/3))))
+    
+    taskmeanscube <- dfcube %>%
+      group_by(block_num) %>%
+      group_by(allbinno) %>%
+      mutate(Mean_th = mean(theta, na.rm = TRUE),
+             SD_th = sd(theta, na.rm = TRUE),
+             SEM_th = SD_th/sqrt(length(unique(ppid)))) %>%
+      distinct(allbinno, .keep_all = TRUE)
+    
+    dfsphere <- dual %>%
+      filter(dualgroup == group) %>%
+      filter(block_num > 3) %>% # exclude practice blocks
+      group_by(ppid) %>%
+      filter(obj_shape == "sphere") %>%
+      mutate(trialn = 1:n(),
+             allbinno = bin(trialn, # bins for ALL trials, ignore task
+                            nbins = (max(trialn))/3,
+                            labels = c(1:(max(trialn)/3)))) %>%
+      group_by(block_num) %>%
+      mutate(binno = bin(trial_num_in_block, # bins per task 
+                         nbins = (max(trial_num_in_block))/3,
+                         labels = c(1:(max(trial_num_in_block)/3))))
+  
+    taskmeanssphere <- dfsphere %>%
+      group_by(block_num) %>%
+      group_by(allbinno) %>%
+      mutate(Mean_th = mean(theta, na.rm = TRUE),
+             SD_th = sd(theta, na.rm = TRUE),
+             SEM_th = SD_th/sqrt(length(unique(ppid)))) %>%
+      distinct(allbinno, .keep_all = TRUE)
+    
+    taskmeans <- bind_rows(taskmeanscube, taskmeanssphere)
+    
+    ## PLOT FULL LC ##
+    if (group == "dual30"){ # for plotting the rotation size horizontal lines 
+      rotsize <- c(-30, 30)
+    } else { 
+      rotsize <- c(-60,60)
+    }
+    
+    taskplot <- ggplot(taskmeans, 
+                       aes(x = as.numeric(allbinno),
+                           y = as.numeric(Mean_th),
+                           color = factor(type),
+                           shape = factor(obj_shape))) +
+      geom_point(group = 1) +
+      scale_shape_manual(values=c(0, 1)) +
+      scale_size_manual(values=c(1,2)) +
+      geom_errorbar(aes(ymin=Mean_th-SEM_th, ymax=Mean_th+SEM_th),
+                    alpha=0.4) +
+      coord_fixed(ratio = 1.5) +
+      theme(panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            panel.background = element_blank(),
+            axis.line = element_line(colour = "black"),
+            legend.title = element_blank(),
+            legend.position = "none") +
+      scale_x_continuous(name="Block",
+                         limits=c(0, 72),
+                         breaks=seq(0,72,9)) +
+      scale_y_continuous(name="Hand angle (Degrees)",
+                         limits=c(-60, 60),
+                         breaks=seq(-60,60,10)) +
+      geom_hline(yintercept = 0,  color = "grey") +
+      geom_vline(xintercept = 8,  color = "grey") +
+      geom_hline(yintercept = rotsize[1],  linetype = "dashed", color = "red")+
+      geom_hline(yintercept = rotsize[2],  linetype = "dashed", color = "red")
+    
+    print(taskplot)
+
+  
+}
   
 }
